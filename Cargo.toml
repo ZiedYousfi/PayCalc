@@ -1,0 +1,10 @@
+[package]
+name = "paycalc"
+version = "1.0.0"
+authors = ["Zied Yousfi"]
+description = "A simple calculator for calculating my net salary"
+license = "MIT"
+readme = "README.md"
+edition = "2024"
+
+[dependencies]

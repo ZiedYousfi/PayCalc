@@ -11,7 +11,7 @@ PayCalc is a command-line utility that calculates payment amounts based on hourl
 Make sure you have Rust installed on your system. Then clone the repository and build the project:
 
 ```bash
-git clone https://github.com/yourusername/paycalc.git
+git clone https://github.com/ZiedYousfi/PayCalc.git
 cd paycalc
 cargo build --release
 ```
@@ -35,7 +35,23 @@ The input text should follow this format:
 - Hourly rate should be preceded by an asterisk (`*`)
 - Worked hours should be preceded by whitespace
 
-Example: `Rate is *25 and hours worked are 40`
+### Examples
+
+```
+Please enter the rate increase:
+5.0
+Please enter the hours for increase:
+10.0
+Please enter the per hour wage (starting with "*") and hours worked:
+Rate is *25 and hours worked are 40
+```
+
+This means:
+- Base rate is $25/hour
+- After every 10 hours worked, the rate increases by $5
+- Total hours worked is 40
+- Final rate will be $25 + (40 × $5/10) = $45/hour
+- Total payment will be 40 × $45 = $1800
 
 ## License
 

@@ -81,7 +81,7 @@ fn main() {
     println!("Worked hours : {}", worked_hours);
 
     let final_rate = per_hour
-        + (worked_hours as f64 / increase_rate_in_hours as f64).round() * increase_for_rate;
+        + (worked_hours as f64 / increase_rate_in_hours as f64).floor() * increase_for_rate;
 
     println!("Final rate : {}", final_rate);
 

@@ -80,10 +80,23 @@ fn main() {
 
     println!("Worked hours : {}", worked_hours);
 
-    let final_rate = per_hour
+    let mut to_pay: f64 = 0.0;
+
+    let mut final_rate: f64 = per_hour;
+
+    for _ in 0..(worked_hours / increase_rate_in_hours) as usize {
+        for _ in 0..increase_rate_in_hours as usize {
+            to_pay += final_rate;
+        }
+        final_rate += increase_for_rate
+    }
+    /*
+    let final_rate: f64 = per_hour
         + (worked_hours as f64 / increase_rate_in_hours as f64).floor() * increase_for_rate;
 
     println!("Final rate : {}", final_rate);
+
+    */
 
     let mut already_paid: f64 = 0.0;
 
@@ -100,7 +113,7 @@ fn main() {
         Err(e) => println!("Couldn't read that : {}", e),
     }
 
-    let to_pay: f64 = worked_hours as f64 * final_rate - already_paid;
+    to_pay -= already_paid;
 
     println!("To pay : {}", to_pay);
     println!("Don't care about the currency, just pay me!");

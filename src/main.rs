@@ -12,101 +12,115 @@ macro_rules! separator {
 fn main() {
     println!("Hello, world!");
 
-    let mut increase_for_rate: f64 = 0.0;
-    let mut increase_rate_in_hours: f32 = 0.0;
-
-    let mut rate_input = String::new();
-    println!("Please enter the rate increase:");
-    match io::stdin().read_line(&mut rate_input) {
-        Ok(_) => match rate_input.trim().parse::<f64>() {
-            Ok(val) => increase_for_rate = val,
-            Err(e) => eprintln!("Failed to parse rate: {}", e),
-        },
-        Err(e) => eprintln!("Failed to read rate: {}", e),
-    }
-
-    let mut hours_input = String::new();
-    println!("Please enter the hours for increase:");
-    match io::stdin().read_line(&mut hours_input) {
-        Ok(_) => match hours_input.trim().parse::<f32>() {
-            Ok(val) => increase_rate_in_hours = val,
-            Err(e) => eprintln!("Failed to parse hours: {}", e),
-        },
-        Err(e) => eprintln!("Failed to read hours: {}", e),
-    }
+    let increase_for_rate = get_rate_increase();
+    let increase_rate_in_hours = get_hours_for_increase();
 
     println!("Increase for rate: {}", increase_for_rate);
     println!("Increase rate in hours: {}", increase_rate_in_hours);
 
-    let mut input: String = String::new();
-    let mut per_hour: f64 = 0.0;
-    let mut worked_hours: f32 = 0.0;
+    let (per_hour, worked_hours) = get_wage_and_hours();
+
+    println!("Worked hours: {}", worked_hours);
+
+    let to_pay = calculate_payment(per_hour, worked_hours, increase_for_rate, increase_rate_in_hours);
+    let already_paid = get_already_paid_amount();
+
+    let final_amount = to_pay - already_paid;
+
+    println!("To pay: {}", final_amount);
+    println!("Don't care about the currency, just pay me!");
+    println!("Done :)");
+}
+
+fn get_rate_increase() -> f64 {
+    let mut rate_input = String::new();
+    println!("Please enter the rate increase:");
+    match io::stdin().read_line(&mut rate_input) {
+        Ok(_) => match rate_input.trim().parse::<f64>() {
+            Ok(val) => return val,
+            Err(e) => eprintln!("Failed to parse rate: {}", e),
+        },
+        Err(e) => eprintln!("Failed to read rate: {}", e),
+    }
+    0.0
+}
+
+fn get_hours_for_increase() -> f32 {
+    let mut hours_input = String::new();
+    println!("Please enter the hours for increase:");
+    match io::stdin().read_line(&mut hours_input) {
+        Ok(_) => match hours_input.trim().parse::<f32>() {
+            Ok(val) => return val,
+            Err(e) => eprintln!("Failed to parse hours: {}", e),
+        },
+        Err(e) => eprintln!("Failed to read hours: {}", e),
+    }
+    0.0
+}
+
+fn get_wage_and_hours() -> (f64, f32) {
+    let mut input = String::new();
+    let mut per_hour = 0.0;
+    let mut worked_hours = 0.0;
 
     println!("Please enter the per hour wage (starting with \"*\") and hours worked in one line:");
 
     match io::stdin().read_line(&mut input) {
-        Ok(_) => println!("You said : {}", input),
-        Err(e) => {
-            eprintln!("Couldn't get input {}", e)
-        }
+        Ok(_) => println!("You said: {}", input),
+        Err(e) => eprintln!("Couldn't get input {}", e),
     }
 
     match get_value(&input) {
-        Ok(v) => {
-            per_hour += v;
-        }
-        Err(e) => {
-            eprintln!("Couldn't parse per hour wage : {}", e)
-        }
+        Ok(v) => per_hour = v,
+        Err(e) => eprintln!("Couldn't parse per hour wage: {}", e),
     }
 
     match get_number_of_hours(&input) {
-        Ok(v) => {
-            worked_hours += v;
-        }
-        Err(e) => {
-            eprintln!("Couldn't parse per hour wage : {}", e)
-        }
+        Ok(v) => worked_hours = v,
+        Err(e) => eprintln!("Couldn't parse hours worked: {}", e),
     }
 
-    println!("Worked hours : {}", worked_hours);
+    (per_hour, worked_hours)
+}
 
-    let mut to_pay: f64 = 0.0;
+fn calculate_payment(per_hour: f64, worked_hours: f32, increase_for_rate: f64, increase_rate_in_hours: f32) -> f64 {
+    let mut to_pay = 0.0;
+    let mut final_rate = per_hour;
 
-    let mut final_rate: f64 = per_hour;
-
-    println!("To pay : {}", to_pay);
-    println!("Final rate : {}", final_rate);
+    println!("Starting calculation:");
+    println!("To pay: {}", to_pay);
+    println!("Final rate: {}", final_rate);
 
     for _ in 0..(worked_hours / increase_rate_in_hours) as usize {
         for _ in 0..increase_rate_in_hours as usize {
             to_pay += final_rate;
         }
         final_rate += increase_for_rate;
-        println!("To pay : {}", to_pay);
-        println!("Final rate : {}", final_rate);
+        println!("To pay: {}", to_pay);
+        println!("Final rate: {}", final_rate);
     }
 
-    let mut already_paid: f64 = 0.0;
+    // Handle remaining hours
+    let remaining_hours = worked_hours % increase_rate_in_hours;
+    for _ in 0..remaining_hours as usize {
+        to_pay += final_rate;
+    }
 
-    let mut already_paid_input: String = String::new();
+    to_pay
+}
+
+fn get_already_paid_amount() -> f64 {
+    let mut already_paid_input = String::new();
 
     println!("Please enter the amount already paid:");
     match io::stdin().read_line(&mut already_paid_input) {
         Ok(_) => match already_paid_input.trim().parse::<f64>() {
-            Ok(val) => {
-                already_paid = val;
-            }
-            Err(e) => println!("Couldn't parse that : {}", e),
+            Ok(val) => return val,
+            Err(e) => println!("Couldn't parse that: {}", e),
         },
-        Err(e) => println!("Couldn't read that : {}", e),
+        Err(e) => println!("Couldn't read that: {}", e),
     }
-
-    to_pay -= already_paid;
-
-    println!("To pay : {}", to_pay);
-    println!("Don't care about the currency, just pay me!");
-    println!("Done :)");
+    0.0
 }
 
 /// This function takes a string and returns the value found after the '*' character.

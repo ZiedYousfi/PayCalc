@@ -37,10 +37,6 @@ fn main() {
 
     println!("Increase for rate: {}", increase_for_rate);
     println!("Increase rate in hours: {}", increase_rate_in_hours);
-    println!(
-        "Increase rate: {}",
-        increase_for_rate / increase_rate_in_hours as f64
-    );
 
     let mut input: String = String::new();
     let mut per_hour: f64 = 0.0;
@@ -64,9 +60,6 @@ fn main() {
         }
     }
 
-    //assert!(per_hour != 0.0);
-    println!("Per hour: {}", per_hour);
-
     match get_number_of_hours(&input) {
         Ok(v) => {
             worked_hours += v;
@@ -76,27 +69,23 @@ fn main() {
         }
     }
 
-    //assert!(worked_hours != 0.0);
-
     println!("Worked hours : {}", worked_hours);
 
     let mut to_pay: f64 = 0.0;
 
     let mut final_rate: f64 = per_hour;
 
+    println!("To pay : {}", to_pay);
+    println!("Final rate : {}", final_rate);
+
     for _ in 0..(worked_hours / increase_rate_in_hours) as usize {
         for _ in 0..increase_rate_in_hours as usize {
             to_pay += final_rate;
         }
-        final_rate += increase_for_rate
+        final_rate += increase_for_rate;
+        println!("To pay : {}", to_pay);
+        println!("Final rate : {}", final_rate);
     }
-    /*
-    let final_rate: f64 = per_hour
-        + (worked_hours as f64 / increase_rate_in_hours as f64).floor() * increase_for_rate;
-
-    println!("Final rate : {}", final_rate);
-
-    */
 
     let mut already_paid: f64 = 0.0;
 
@@ -163,6 +152,7 @@ fn get_number_of_hours(string: &str) -> Result<f32, Error> {
 
             if end > start {
                 if let Ok(value) = string[start..end].parse::<f32>() {
+                    println!("Found value: {}", value);
                     values.push(value);
                 }
             }
@@ -174,4 +164,39 @@ fn get_number_of_hours(string: &str) -> Result<f32, Error> {
     }
 
     Ok(values.iter().sum())
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_value() {
+        assert_eq!(get_value("*100").unwrap(), 100.0);
+        assert_eq!(get_value("salary *50 per hour").unwrap(), 50.0);
+        assert_eq!(get_value("rate is *75.5").unwrap(), 75.5);
+        assert!(get_value("no asterisk here").is_err());
+        assert!(get_value("* no number").is_err());
+        assert!(get_value("").is_err());
+    }
+
+    #[test]
+    fn test_get_number_of_hours() {
+        assert_eq!(get_number_of_hours("*100 40").unwrap(), 40.0);
+        assert_eq!(get_number_of_hours("hours: 8").unwrap(), 8.0);
+        assert_eq!(get_number_of_hours("worked\t35\nhours").unwrap(), 35.0);
+        assert_eq!(get_number_of_hours("10 20 30").unwrap(), 60.0);
+        assert!(get_number_of_hours("no numbers").is_err());
+        assert!(get_number_of_hours("").is_err());
+    }
+
+    #[test]
+    fn test_separator_macro() {
+        let separators = separator!();
+        assert!(separators.contains(&" "));
+        assert!(separators.contains(&"\t"));
+        assert!(separators.contains(&"\n"));
+        assert!(separators.contains(&"\r"));
+        assert!(separators.contains(&"\x0B"));
+        assert!(separators.contains(&"\x0C"));
+    }
 }

@@ -1,10 +1,10 @@
 # PayCalc
 
-A simple Rust calculator for calculating net salary based on hourly rates and worked hours.
+A Rust calculator for computing salaries with progressive rate increases.
 
 ## Description
 
-PayCalc is a command-line utility that calculates payment amounts based on hourly rates and the number of hours worked. It also supports rate increases based on additional hours worked.
+PayCalc is a command-line utility that calculates payment amounts based on hourly rates and worked hours. The program accounts for rate increases after a certain number of worked hours, making the calculation more accurate for situations where the hourly rate increases with experience or time worked.
 
 ## Installation
 
@@ -25,33 +25,61 @@ cargo run
 ```
 
 The program will ask for:
-1. Rate increase amount
-2. Hours required for rate increase
-3. Basic input text containing hourly rate and worked hours
+1. The hourly rate increase amount after each period
+2. The number of hours per period before the rate increase
+3. The initial hourly rate (preceded by an asterisk `*`) and hours worked
+4. The amount already paid (if applicable)
 
 ### Input Format
 
-The input text should follow this format:
-- Hourly rate should be preceded by an asterisk (`*`)
-- Worked hours should be preceded by whitespace
+For the main input regarding rate and hours:
+- The hourly rate must be preceded by an asterisk (`*`)
+- The worked hours should follow the rate, separated by a space
 
-### Examples
+### Usage Example
 
 ```
-Please enter the rate increase:
+➡️  Entrez le montant de l'augmentation du taux horaire après chaque palier.
+   Exemple : 10 (ce qui signifie +10€/h après chaque palier)
 5.0
-Please enter the hours for increase:
+
+➡️  Entrez le nombre d'heures par palier avant l'augmentation du taux.
+   Exemple : 10 (le taux augmente toutes les 10h)
 10.0
-Please enter the per hour wage (starting with "*") and hours worked:
-Rate is *25 and hours worked are 40
+
+➡️  Entrez sur une seule ligne le taux horaire (commençant par '*') suivi du nombre d'heures travaillées.
+   Exemple : *50 40 (signifie 50€/h pendant 40 heures)
+*25 40
+
+➡️ Entrez le montant déjà payé.
+   Exemple : 500
+0
 ```
 
-This means:
-- Base rate is $25/hour
-- After every 10 hours worked, the rate increases by $5
-- Total hours worked is 40
-- Final rate will be $25 + (40 × $5/10) = $45/hour
-- Total payment will be 40 × $45 = $1800
+The program will calculate and display:
+- A detailed calculation per period
+- The total amount earned
+- The remaining amount to be paid after deducting the already paid amount
+
+In the example above:
+- Initial rate: 25€/h
+- Increase period: 10 hours
+- Increase per period: 5€/h
+- Total hours worked: 40h
+
+The calculation breaks down as follows:
+- Period 1: 10h at 25€/h = 250€
+- Period 2: 10h at 30€/h = 300€
+- Period 3: 10h at 35€/h = 350€
+- Period 4: 10h at 40€/h = 400€
+- Total: 1300€
+
+## Advanced Features
+
+- Support for decimal numbers with dots or commas
+- Detailed calculation by period
+- Deduction of amounts already paid
+- User error handling
 
 ## License
 

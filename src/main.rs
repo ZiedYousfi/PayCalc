@@ -12,10 +12,12 @@ enum ParseInputError {
 impl std::fmt::Display for ParseInputError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ParseInputError::MissingAsterisk => write!(f, "Aucun astérisque (*) trouvé dans l'entrée"),
+            ParseInputError::MissingAsterisk => {
+                write!(f, "Aucun astérisque (*) trouvé dans l'entrée")
+            }
             ParseInputError::InvalidNumber => write!(f, "Format de nombre invalide"),
             ParseInputError::NoHoursFound => write!(f, "Aucune durée trouvée dans l'entrée"),
-            ParseInputError::IoError(e) => write!(f, "Erreur d'entrée/sortie : {}", e),
+            ParseInputError::IoError(e) => write!(f, "Erreur d'entrée/sortie : {e}"),
         }
     }
 }
@@ -25,11 +27,10 @@ const SEPARATORS: [&str; 6] = [" ", "\t", "\n", "\r", "\x0B", "\x0C"];
 fn main() {
     println!("Hello, world!");
 
-
     let increase_for_rate = match get_rate_increase() {
         Ok(rate) => rate,
         Err(e) => {
-            eprintln!("Erreur lors de la saisie de l'augmentation de taux : {}", e);
+            eprintln!("Erreur lors de la saisie de l'augmentation de taux : {e}");
             0.0
         }
     };
@@ -37,30 +38,39 @@ fn main() {
     let increase_rate_in_hours = match get_hours_for_increase() {
         Ok(hours) => hours,
         Err(e) => {
-            eprintln!("Erreur lors de la saisie du nombre d'heures par palier : {}", e);
+            eprintln!("Erreur lors de la saisie du nombre d'heures par palier : {e}");
             0.0
         }
     };
 
-    println!("\nTaux d'augmentation : +{} après chaque {} heures.", increase_for_rate, increase_rate_in_hours);
+    println!(
+        "\nTaux d'augmentation : +{increase_for_rate} après chaque {increase_rate_in_hours} heures."
+    );
 
     let (per_hour, worked_hours) = match get_wage_and_hours() {
         Ok(result) => result,
         Err(e) => {
-            eprintln!("Erreur lors de la saisie du salaire horaire et des heures travaillées : {}", e);
+            eprintln!(
+                "Erreur lors de la saisie du salaire horaire et des heures travaillées : {e}"
+            );
             (0.0, 0.0)
         }
     };
 
-    println!("\nTaux de départ : {}€/h", per_hour);
-    println!("Nombre total d'heures travaillées : {}", worked_hours);
+    println!("\nTaux de départ : {per_hour}€/h");
+    println!("Nombre total d'heures travaillées : {worked_hours}");
 
-    let to_pay = calculate_payment(per_hour, worked_hours, increase_for_rate, increase_rate_in_hours);
+    let to_pay = calculate_payment(
+        per_hour,
+        worked_hours,
+        increase_for_rate,
+        increase_rate_in_hours,
+    );
 
     let already_paid = match get_already_paid_amount() {
         Ok(amount) => amount,
         Err(e) => {
-            eprintln!("Erreur lors de la saisie du montant déjà payé : {}", e);
+            eprintln!("Erreur lors de la saisie du montant déjà payé : {e}");
             0.0
         }
     };
@@ -68,9 +78,9 @@ fn main() {
     let final_amount = to_pay - already_paid;
 
     println!("\n🌸 Résumé 🌸");
-    println!("Total gagné : {:.2}€", to_pay);
-    println!("Déjà payé : {:.2}€", already_paid);
-    println!("Reste à payer : {:.2}€", final_amount);
+    println!("Total gagné : {to_pay:.2}€");
+    println!("Déjà payé : {already_paid:.2}€");
+    println!("Reste à payer : {final_amount:.2}€");
     println!("Merci pour votre travail 💖");
 }
 
@@ -83,7 +93,10 @@ fn get_rate_increase() -> Result<f64, ParseInputError> {
         .read_line(&mut input)
         .map_err(|e| ParseInputError::IoError(e.to_string()))?;
 
-    input.trim().replace(',', ".").parse::<f64>()
+    input
+        .trim()
+        .replace(',', ".")
+        .parse::<f64>()
         .map_err(|_| ParseInputError::InvalidNumber)
 }
 
@@ -96,13 +109,18 @@ fn get_hours_for_increase() -> Result<f32, ParseInputError> {
         .read_line(&mut input)
         .map_err(|e| ParseInputError::IoError(e.to_string()))?;
 
-    input.trim().replace(',', ".").parse::<f32>()
+    input
+        .trim()
+        .replace(',', ".")
+        .parse::<f32>()
         .map_err(|_| ParseInputError::InvalidNumber)
 }
 
 fn get_wage_and_hours() -> Result<(f64, f32), ParseInputError> {
     let mut input = String::new();
-    println!("\n➡️  Entrez sur une seule ligne le taux horaire (commençant par '*') suivi du nombre d'heures travaillées.");
+    println!(
+        "\n➡️  Entrez sur une seule ligne le taux horaire (commençant par '*') suivi du nombre d'heures travaillées."
+    );
     println!("   Exemple : *50 40 (signifie 50€/h pendant 40 heures)");
 
     io::stdin()
@@ -117,7 +135,12 @@ fn get_wage_and_hours() -> Result<(f64, f32), ParseInputError> {
     Ok((per_hour, worked_hours))
 }
 
-fn calculate_payment(per_hour: f64, worked_hours: f32, increase_for_rate: f64, increase_rate_in_hours: f32) -> f64 {
+fn calculate_payment(
+    per_hour: f64,
+    worked_hours: f32,
+    increase_for_rate: f64,
+    increase_rate_in_hours: f32,
+) -> f64 {
     let mut to_pay = 0.0;
     let mut final_rate = per_hour;
     let mut hours_left = worked_hours;
@@ -130,17 +153,23 @@ fn calculate_payment(per_hour: f64, worked_hours: f32, increase_for_rate: f64, i
         to_pay += segment;
         hours_left -= increase_rate_in_hours;
 
-        println!("➤ Période {} : {:.2}€ ({}h à {:.2}€/h)", period + 1, segment, increase_rate_in_hours, final_rate);
+        println!(
+            "➤ Période {} : {:.2}€ ({}h à {:.2}€/h)",
+            period + 1,
+            segment,
+            increase_rate_in_hours,
+            final_rate
+        );
         final_rate += increase_for_rate;
     }
 
     if hours_left > 0.0 {
         let segment = hours_left as f64 * final_rate;
-        println!("➤ Reste : {:.2}€ ({:.2}h à {:.2}€/h)", segment, hours_left, final_rate);
+        println!("➤ Reste : {segment:.2}€ ({hours_left:.2}h à {final_rate:.2}€/h)",);
         to_pay += segment;
     }
 
-    println!("✅ Paiement total : {:.2}€", to_pay);
+    println!("✅ Paiement total : {to_pay:.2}€");
     to_pay
 }
 
@@ -153,7 +182,10 @@ fn get_already_paid_amount() -> Result<f64, ParseInputError> {
         .read_line(&mut input)
         .map_err(|e| ParseInputError::IoError(e.to_string()))?;
 
-    input.trim().replace(',', ".").parse::<f64>()
+    input
+        .trim()
+        .replace(',', ".")
+        .parse::<f64>()
         .map_err(|_| ParseInputError::InvalidNumber)
 }
 
@@ -165,13 +197,17 @@ fn get_value(string: &str) -> Result<f64, ParseInputError> {
             let start = i + 1;
             let mut end = start;
 
-            while end < chars.len() && (chars[end].is_ascii_digit() || chars[end] == '.' || chars[end] == ',') {
+            while end < chars.len()
+                && (chars[end].is_ascii_digit() || chars[end] == '.' || chars[end] == ',')
+            {
                 end += 1;
             }
 
             if end > start {
                 let value = string[start..end].replace(',', ".");
-                return value.parse::<f64>().map_err(|_| ParseInputError::InvalidNumber);
+                return value
+                    .parse::<f64>()
+                    .map_err(|_| ParseInputError::InvalidNumber);
             }
         }
     }
@@ -188,7 +224,9 @@ fn get_number_of_hours(string: &str) -> Result<f32, ParseInputError> {
             let start = i + 1;
             let mut end = start;
 
-            while end < chars.len() && (chars[end].is_ascii_digit() || chars[end] == '.' || chars[end] == ',') {
+            while end < chars.len()
+                && (chars[end].is_ascii_digit() || chars[end] == '.' || chars[end] == ',')
+            {
                 end += 1;
             }
 
@@ -208,7 +246,6 @@ fn get_number_of_hours(string: &str) -> Result<f32, ParseInputError> {
     Ok(values.iter().sum())
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -219,9 +256,18 @@ mod tests {
         assert_eq!(get_value("salary *50 per hour").unwrap(), 50.0);
         assert_eq!(get_value("rate is *75.5").unwrap(), 75.5);
         assert_eq!(get_value("rate is *75,5").unwrap(), 75.5); // Test comma as decimal separator
-        assert!(matches!(get_value("no asterisk here"), Err(ParseInputError::MissingAsterisk)));
-        assert!(matches!(get_value("* no number"), Err(ParseInputError::InvalidNumber)));
-        assert!(matches!(get_value(""), Err(ParseInputError::MissingAsterisk)));
+        assert!(matches!(
+            get_value("no asterisk here"),
+            Err(ParseInputError::MissingAsterisk)
+        ));
+        assert!(matches!(
+            get_value("* no number"),
+            Err(ParseInputError::InvalidNumber)
+        ));
+        assert!(matches!(
+            get_value(""),
+            Err(ParseInputError::MissingAsterisk)
+        ));
     }
 
     #[test]
@@ -232,8 +278,14 @@ mod tests {
         assert_eq!(get_number_of_hours("10 20 30").unwrap(), 60.0);
         assert_eq!(get_number_of_hours("worked 7.5 hours").unwrap(), 7.5); // Test decimal point
         assert_eq!(get_number_of_hours("worked 7,5 hours").unwrap(), 7.5); // Test decimal comma
-        assert!(matches!(get_number_of_hours("no numbers"), Err(ParseInputError::NoHoursFound)));
-        assert!(matches!(get_number_of_hours(""), Err(ParseInputError::NoHoursFound)));
+        assert!(matches!(
+            get_number_of_hours("no numbers"),
+            Err(ParseInputError::NoHoursFound)
+        ));
+        assert!(matches!(
+            get_number_of_hours(""),
+            Err(ParseInputError::NoHoursFound)
+        ));
     }
 
     #[test]

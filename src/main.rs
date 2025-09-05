@@ -5,7 +5,7 @@ fn main() {
     println!("Hello, world!");
 
     let options = eframe::NativeOptions::default();
-    eframe::run_native(
+    let _ = eframe::run_native(
         "PayCalc",
         options,
         Box::new(|cc| Ok(Box::new(gui::MyEguiApp::new(cc)))),

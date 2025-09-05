@@ -61,7 +61,7 @@ jobs:
 
       - name: Show release folder contents
         run: |
-          ls -la release || dir release
+          ls release || dir release
 
       - name: Upload built binaries as workflow artifacts
         uses: actions/upload-artifact@v4

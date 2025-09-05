@@ -1,12 +1,8 @@
-use std::io;
-
-// Type d'erreur personnalisé
 #[derive(Debug)]
 pub enum ParseInputError {
     MissingAsterisk,
     InvalidNumber,
     NoHoursFound,
-    IoError(String),
 }
 
 impl std::fmt::Display for ParseInputError {
@@ -17,63 +13,11 @@ impl std::fmt::Display for ParseInputError {
             }
             ParseInputError::InvalidNumber => write!(f, "Format de nombre invalide"),
             ParseInputError::NoHoursFound => write!(f, "Aucune durée trouvée dans l'entrée"),
-            ParseInputError::IoError(e) => write!(f, "Erreur d'entrée/sortie : {e}"),
         }
     }
 }
 
 const SEPARATORS: [&str; 6] = [" ", "\t", "\n", "\r", "\x0B", "\x0C"];
-
-pub fn get_rate_increase() -> Result<f64, ParseInputError> {
-    let mut input = String::new();
-    println!("➡️  Entrez le montant de l'augmentation du taux horaire après chaque palier.");
-    println!("   Exemple : 10 (ce qui signifie +10€/h après chaque palier)");
-
-    io::stdin()
-        .read_line(&mut input)
-        .map_err(|e| ParseInputError::IoError(e.to_string()))?;
-
-    input
-        .trim()
-        .replace(',', ".")
-        .parse::<f64>()
-        .map_err(|_| ParseInputError::InvalidNumber)
-}
-
-pub fn get_hours_for_increase() -> Result<f32, ParseInputError> {
-    let mut input = String::new();
-    println!("➡️  Entrez le nombre d'heures par palier avant l'augmentation du taux.");
-    println!("   Exemple : 10 (le taux augmente toutes les 10h)");
-
-    io::stdin()
-        .read_line(&mut input)
-        .map_err(|e| ParseInputError::IoError(e.to_string()))?;
-
-    input
-        .trim()
-        .replace(',', ".")
-        .parse::<f32>()
-        .map_err(|_| ParseInputError::InvalidNumber)
-}
-
-pub fn get_wage_and_hours() -> Result<(f64, f32), ParseInputError> {
-    let mut input = String::new();
-    println!(
-        "\n➡️  Entrez sur une seule ligne le taux horaire (commençant par '*') suivi du nombre d'heures travaillées."
-    );
-    println!("   Exemple : *50 40 (signifie 50€/h pendant 40 heures)");
-
-    io::stdin()
-        .read_line(&mut input)
-        .map_err(|e| ParseInputError::IoError(e.to_string()))?;
-
-    println!("Saisie : {}", input.trim());
-
-    let per_hour = get_value(&input)?;
-    let worked_hours = get_number_of_hours(&input)?;
-
-    Ok((per_hour, worked_hours))
-}
 
 pub fn calculate_payment(
     per_hour: f64,
@@ -111,22 +55,6 @@ pub fn calculate_payment(
 
     println!("✅ Paiement total : {to_pay:.2}€");
     to_pay
-}
-
-pub fn get_already_paid_amount() -> Result<f64, ParseInputError> {
-    let mut input = String::new();
-    println!("\n➡️ Entrez le montant déjà payé.");
-    println!("   Exemple : 500");
-
-    io::stdin()
-        .read_line(&mut input)
-        .map_err(|e| ParseInputError::IoError(e.to_string()))?;
-
-    input
-        .trim()
-        .replace(',', ".")
-        .parse::<f64>()
-        .map_err(|_| ParseInputError::InvalidNumber)
 }
 
 pub fn get_value(string: &str) -> Result<f64, ParseInputError> {

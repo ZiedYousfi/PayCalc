@@ -8,3 +8,4 @@ readme = "README.md"
 edition = "2024"
 
 [dependencies]
+egui = "0.32.2"

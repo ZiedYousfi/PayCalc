@@ -1,0 +1,70 @@
+name: Build Binaries
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            ext: ""
+          - os: macos-latest
+            ext: ""
+          - os: windows-latest
+            ext: .exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Create release directory (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p release
+
+      - name: Create release directory (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          New-Item -ItemType Directory -Force -Path release
+
+      - name: Build binary (Rust)
+        run: |
+          # Adjust the package name/path if your binary target has a different name or is in a workspace
+          cargo build --release
+
+      - name: Copy binary to release folder (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          BIN=myapp
+          cp target/release/${BIN} release/${BIN}-${{ matrix.os }}-amd64${{ matrix.ext }}
+          chmod +x release/${BIN}-${{ matrix.os }}-amd64${{ matrix.ext }} || true
+
+      - name: Copy binary to release folder (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $bin = 'myapp'
+          $src = Join-Path -Path 'target\release' -ChildPath ($bin + '.exe')
+          $dst = Join-Path -Path 'release' -ChildPath ($bin + '-'+ '${{ matrix.os }}' + '-amd64' + '${{ matrix.ext }}')
+          Copy-Item -Path $src -Destination $dst -Force
+
+      - name: Show release folder contents
+        run: |
+          ls -la release || dir release
+
+      - name: Upload built binaries as workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: myapp-${{ matrix.os }}-amd64
+          path: release/myapp-${{ matrix.os }}-amd64${{ matrix.ext }}

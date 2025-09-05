@@ -13,10 +13,20 @@ jobs:
         include:
           - os: ubuntu-latest
             ext: ""
+            arch: amd64
+            platform: linux
           - os: macos-latest
             ext: ""
+            arch: amd64
+            platform: macos
+          - os: macos-latest
+            ext: ""
+            arch: arm64
+            platform: macos-arm64
           - os: windows-latest
             ext: .exe
+            arch: amd64
+            platform: windows
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
@@ -38,7 +48,19 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path release
 
+      - name: Add macOS aarch64 target (for Apple Silicon builds)
+        if: ${{ matrix.platform == 'macos-arm64' }}
+        run: |
+          rustup target add aarch64-apple-darwin || true
+
+      - name: Build binary (Apple Silicon)
+        if: ${{ matrix.platform == 'macos-arm64' }}
+        run: |
+          # Build for Apple Silicon (aarch64-apple-darwin)
+          cargo build --release --target aarch64-apple-darwin
+
       - name: Build binary (Rust)
+        if: ${{ matrix.platform != 'macos-arm64' }}
         run: |
           # Adjust the package name/path if your binary target has a different name or is in a workspace
           cargo build --release
@@ -46,25 +68,77 @@ jobs:
       - name: Copy binary to release folder (Unix)
         if: runner.os != 'Windows'
         run: |
+          set -e
           BIN=paycalc
-          cp target/release/${BIN} release/${BIN}-${{ matrix.os }}-amd64${{ matrix.ext }}
-          chmod +x release/${BIN}-${{ matrix.os }}-amd64${{ matrix.ext }} || true
+          SRC=""
+          # check common target locations (including target triple directories and workspace layouts)
+          if [ "${{ matrix.platform }}" = "macos-arm64" ]; then
+            CANDIDATES=( "target/aarch64-apple-darwin/release/${BIN}" "target/*/release/${BIN}" "target/release/${BIN}" )
+          else
+            CANDIDATES=( "target/release/${BIN}" "target/*/release/${BIN}" )
+          fi
+
+          for c in "${CANDIDATES[@]}"; do
+            # expand globs
+            for f in $c; do
+              if [ -f "$f" ]; then
+                SRC="$f"
+                break 2
+              fi
+            done
+          done
+
+          # fallback to searching
+          if [ -z "$SRC" ]; then
+            echo "Binary not found in expected locations, searching target directory..."
+            SRC=$(find target -type f -name "${BIN}*" -print -quit || true)
+          fi
+
+          if [ -z "$SRC" ]; then
+            echo "ERROR: Binary '${BIN}' not found after build."
+            echo "Listing target directory for debugging:"
+            ls -R target || true
+            exit 1
+          fi
+
+          DST=release/${BIN}-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.ext }}
+          echo "Copying binary from ${SRC} to ${DST}"
+          cp "${SRC}" "${DST}"
+          chmod +x "${DST}" || true
 
       - name: Copy binary to release folder (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $bin = 'paycalc'
+          # common location
           $src = Join-Path -Path 'target\release' -ChildPath ($bin + '.exe')
-          $dst = Join-Path -Path 'release' -ChildPath ($bin + '-'+ '${{ matrix.os }}' + '-amd64' + '${{ matrix.ext }}')
+          if (-not (Test-Path $src)) {
+            # try to find under target (including triples/workspace layout)
+            $found = Get-ChildItem -Path target -Recurse -Filter ($bin + '*.exe') -File -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($found) {
+              $src = $found.FullName
+            } else {
+              Write-Host "ERROR: Binary $bin not found under target folder."
+              Get-ChildItem -Path target -Recurse -Force -ErrorAction SilentlyContinue | Select-Object -First 50
+              exit 1
+            }
+          }
+          $dst = Join-Path -Path 'release' -ChildPath ($bin + '-'+ '${{ matrix.platform }}' + '-' + '${{ matrix.arch }}' + '${{ matrix.ext }}')
+          Write-Host "Copying binary from $src to $dst"
           Copy-Item -Path $src -Destination $dst -Force
 
       - name: Show release folder contents
         run: |
-          ls release || dir release
+          echo "Release directory:"
+          ls -la release || dir release
+          echo ""
+          echo "Target build artifacts (for debugging):"
+          ls -la target || true
+          find target -maxdepth 3 -type f -name "paycalc*" -print || true
 
       - name: Upload built binaries as workflow artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: paycalc-${{ matrix.os }}-amd64
-          path: release/paycalc-${{ matrix.os }}-amd64${{ matrix.ext }}
+          name: paycalc-${{ matrix.platform }}-${{ matrix.arch }}
+          path: release/**

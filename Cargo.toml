@@ -8,5 +8,5 @@ readme = "README.md"
 edition = "2024"
 
 [dependencies]
-eframe = "0.32.2"
+eframe = { version="0.32.2", features=["persistence"] }
 egui = "0.32.2"

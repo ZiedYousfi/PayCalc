@@ -1,9 +1,10 @@
-use eframe::egui;
-
 use crate::utils;
+use eframe::egui;
+use serde::{Deserialize, Serialize};
 
 /// Egui application that wires the UI to the calculation and CLI parsing helpers.
-#[derive(Default)]
+#[derive(Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct MyEguiApp {
     // Inputs
     per_hour: f64,
@@ -30,7 +31,15 @@ pub struct MyEguiApp {
 }
 
 impl MyEguiApp {
-    pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
+    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        // Attempt to restore persisted state from `cc.storage` (requires the "persistence" feature).
+        // If a saved state exists, return it; otherwise, fall back to defaults.
+        if let Some(storage) = cc.storage {
+            if let Some(state) = eframe::get_value::<Self>(storage, eframe::APP_KEY) {
+                return state;
+            }
+        }
+
         Self {
             per_hour: 50.0,
             worked_hours: 40.0,
@@ -366,5 +375,12 @@ impl eframe::App for MyEguiApp {
                 ui.label("• Les champs acceptent des valeurs décimales.");
                 ui.label("• Vérifiez les unités (€/h et h).");
             });
+    }
+
+    fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        // Persist the entire app state. This requires `MyEguiApp` to implement
+        // `serde::Serialize` (done via the derive above) and eframe to be built
+        // with the `persistence` feature (Cargo.toml already includes it).
+        eframe::set_value(storage, eframe::APP_KEY, self);
     }
 }

@@ -131,10 +131,10 @@ jobs:
       - name: Show release folder contents
         run: |
           echo "Release directory:"
-          ls -la release || dir release
+          ls release || dir release
           echo ""
           echo "Target build artifacts (for debugging):"
-          ls -la target || true
+          ls -target || true
           find target -maxdepth 3 -type f -name "paycalc*" -print || true
 
       - name: Upload built binaries as workflow artifacts

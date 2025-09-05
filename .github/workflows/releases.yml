@@ -1,10 +1,15 @@
-name: Build Binaries
+name: Build and Publish Binaries (Repo + Release)
 
 on:
   push:
     branches:
       - main
+    paths-ignore:
+      - "release/**" # éviter de re-déclencher sur nos commits bots
   workflow_dispatch:
+
+permissions:
+  contents: write # nécessaire pour commit/push et créer une Release
 
 jobs:
   build:
@@ -28,9 +33,12 @@ jobs:
             arch: amd64
             platform: windows
     runs-on: ${{ matrix.os }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Rust toolchain
         uses: actions-rs/toolchain@v1
@@ -45,33 +53,32 @@ jobs:
 
       - name: Create release directory (Windows)
         if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path release
+          New-Item -ItemType Directory -Force -Path release | Out-Null
 
       - name: Add macOS aarch64 target (for Apple Silicon builds)
         if: ${{ matrix.platform == 'macos-arm64' }}
         run: |
-          rustup target add aarch64-apple-darwin || true
+          rustup target add aarch64-apple-darwin
 
       - name: Build binary (Apple Silicon)
         if: ${{ matrix.platform == 'macos-arm64' }}
         run: |
-          # Build for Apple Silicon (aarch64-apple-darwin)
           cargo build --release --target aarch64-apple-darwin
 
       - name: Build binary (Rust)
         if: ${{ matrix.platform != 'macos-arm64' }}
         run: |
-          # Adjust the package name/path if your binary target has a different name or is in a workspace
           cargo build --release
 
       - name: Copy binary to release folder (Unix)
         if: runner.os != 'Windows'
+        env:
+          BIN: paycalc
         run: |
           set -e
-          BIN=paycalc
           SRC=""
-          # check common target locations (including target triple directories and workspace layouts)
           if [ "${{ matrix.platform }}" = "macos-arm64" ]; then
             CANDIDATES=( "target/aarch64-apple-darwin/release/${BIN}" "target/*/release/${BIN}" "target/release/${BIN}" )
           else
@@ -79,29 +86,25 @@ jobs:
           fi
 
           for c in "${CANDIDATES[@]}"; do
-            # expand globs
             for f in $c; do
               if [ -f "$f" ]; then
-                SRC="$f"
-                break 2
+                SRC="$f"; break 2
               fi
             done
           done
 
-          # fallback to searching
           if [ -z "$SRC" ]; then
-            echo "Binary not found in expected locations, searching target directory..."
-            SRC=$(find target -type f -name "${BIN}*" -print -quit || true)
+            echo "Binary not found in expected locations, searching target..."
+            SRC=$(find target -type f -name "${BIN}" -print -quit || true)
           fi
 
           if [ -z "$SRC" ]; then
             echo "ERROR: Binary '${BIN}' not found after build."
-            echo "Listing target directory for debugging:"
             ls -R target || true
             exit 1
           fi
 
-          DST=release/${BIN}-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.ext }}
+          DST="release/${BIN}-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.ext }}"
           echo "Copying binary from ${SRC} to ${DST}"
           cp "${SRC}" "${DST}"
           chmod +x "${DST}" || true
@@ -109,36 +112,92 @@ jobs:
       - name: Copy binary to release folder (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
+        env:
+          BIN: paycalc
         run: |
-          $bin = 'paycalc'
-          # common location
-          $src = Join-Path -Path 'target\release' -ChildPath ($bin + '.exe')
+          $bin = $env:BIN
+          $src = Join-Path 'target\release' ($bin + '.exe')
           if (-not (Test-Path $src)) {
-            # try to find under target (including triples/workspace layout)
             $found = Get-ChildItem -Path target -Recurse -Filter ($bin + '*.exe') -File -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($found) {
-              $src = $found.FullName
-            } else {
+            if ($found) { $src = $found.FullName } else {
               Write-Host "ERROR: Binary $bin not found under target folder."
-              Get-ChildItem -Path target -Recurse -Force -ErrorAction SilentlyContinue | Select-Object -First 50
+              Get-ChildItem -Path target -Recurse -Force -ErrorAction SilentlyContinue | Select-Object -First 100
               exit 1
             }
           }
-          $dst = Join-Path -Path 'release' -ChildPath ($bin + '-'+ '${{ matrix.platform }}' + '-' + '${{ matrix.arch }}' + '${{ matrix.ext }}')
+          $dst = Join-Path 'release' ($bin + '-' + '${{ matrix.platform }}' + '-' + '${{ matrix.arch }}' + '${{ matrix.ext }}')
           Write-Host "Copying binary from $src to $dst"
           Copy-Item -Path $src -Destination $dst -Force
-
-      - name: Show release folder contents
-        run: |
-          echo "Release directory:"
-          ls release || dir release
-          echo ""
-          echo "Target build artifacts (for debugging):"
-          ls -target || true
-          find target -maxdepth 3 -type f -name "paycalc*" -print || true
 
       - name: Upload built binaries as workflow artifacts
         uses: actions/upload-artifact@v4
         with:
           name: paycalc-${{ matrix.platform }}-${{ matrix.arch }}
           path: release/**
+
+  commit-and-release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release_downloads
+
+      - name: Flatten and stage binaries into repo release/
+        run: |
+          set -e
+          mkdir -p release
+          # Rassembler tous les fichiers des artefacts dans release/
+          find release_downloads -type f -maxdepth 3 -print -exec cp {} release/ \;
+          echo "Files staged into repo release/:"
+          ls -l release
+
+      - name: Commit binaries into repo
+        env:
+          GIT_AUTHOR_NAME: github-actions
+          GIT_AUTHOR_EMAIL: actions@github.com
+          GIT_COMMITTER_NAME: github-actions
+          GIT_COMMITTER_EMAIL: actions@github.com
+        run: |
+          set -e
+          # Ne pas re-committer si rien n'a changé
+          if git diff --quiet -- release; then
+            echo "No changes in release/ to commit."
+            exit 0
+          fi
+          git add release
+          # Utilise la SHA courte et la date pour un message clair
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          git commit -m "chore(release): add binaries for $SHORT_SHA at $DATE"
+          # Push sur la même branche que l’événement
+          git push
+
+      - name: Generate tag and release info
+        id: meta
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          DATE=$(date -u +"%Y%m%d-%H%M%S")
+          TAG="build-${DATE}-${SHORT_SHA}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "name=Automated build $DATE ($SHORT_SHA)" >> "$GITHUB_OUTPUT"
+          echo "body=Automated binaries build for commit $SHORT_SHA on $DATE" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: ${{ steps.meta.outputs.name }}
+          body: ${{ steps.meta.outputs.body }}
+          draft: false
+          prerelease: false
+          files: |
+            release/**
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

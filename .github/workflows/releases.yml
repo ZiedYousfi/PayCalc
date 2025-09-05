@@ -46,7 +46,7 @@ jobs:
       - name: Copy binary to release folder (Unix)
         if: runner.os != 'Windows'
         run: |
-          BIN=myapp
+          BIN=paycalc
           cp target/release/${BIN} release/${BIN}-${{ matrix.os }}-amd64${{ matrix.ext }}
           chmod +x release/${BIN}-${{ matrix.os }}-amd64${{ matrix.ext }} || true
 
@@ -54,7 +54,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $bin = 'myapp'
+          $bin = 'paycalc'
           $src = Join-Path -Path 'target\release' -ChildPath ($bin + '.exe')
           $dst = Join-Path -Path 'release' -ChildPath ($bin + '-'+ '${{ matrix.os }}' + '-amd64' + '${{ matrix.ext }}')
           Copy-Item -Path $src -Destination $dst -Force
@@ -66,5 +66,5 @@ jobs:
       - name: Upload built binaries as workflow artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: myapp-${{ matrix.os }}-amd64
-          path: release/myapp-${{ matrix.os }}-amd64${{ matrix.ext }}
+          name: paycalc-${{ matrix.os }}-amd64
+          path: release/paycalc-${{ matrix.os }}-amd64${{ matrix.ext }}
